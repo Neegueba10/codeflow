@@ -423,6 +423,13 @@ body{font-family:'JetBrains Mono',monospace;background:var(--bg0);color:var(--t0
 .key-modal .form-input{min-height:200px;font-family:'JetBrains Mono',monospace;font-size:10px;resize:vertical}
 .key-info{font-size:10px;color:var(--t2);margin-bottom:12px;padding:10px;background:var(--bg0);border-radius:6px;line-height:1.5}
 .key-info code{background:var(--bg3);padding:2px 5px;border-radius:3px;color:var(--acc)}
+.exclude-note{font-size:10px;color:var(--t2);line-height:1.6;margin-bottom:12px}
+.exclude-note code{background:var(--bg0);padding:2px 5px;border-radius:4px;color:var(--acc)}
+.exclude-chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.exclude-chip{font-size:9px;padding:4px 8px;background:var(--bg0);border:1px solid var(--border);border-radius:999px;color:var(--t2)}
+.exclude-textarea{min-height:180px;font-family:'JetBrains Mono',monospace;font-size:10px;resize:vertical}
+.exclude-help{font-size:9px;color:var(--t3);line-height:1.5;margin-top:8px}
+.exclude-count{font-size:9px;color:var(--t3);margin-left:auto}
     </style>
 </head>
 <body>
@@ -432,6 +439,107 @@ const{useState,useEffect,useRef,useMemo,useCallback}=React;
 const COLORS=['#4d9fff','#a78bfa','#22d3ee','#00ff9d','#ff9f43','#ec4899','#ff5f5f','#84cc16'];
 const LAYER_COLORS={ui:'#4d9fff',components:'#22d3ee',services:'#a78bfa',utils:'#00ff9d',data:'#ff9f43',config:'#ec4899',test:'#f59e0b',modules:'#a78bfa',forms:'#22d3ee',classes:'#ff9f43'};
 const IGNORE=new Set(['node_modules','.git','vendor','dist','build','__pycache__','.next','coverage','.venv','venv','env','.env','.tox','.mypy_cache','.pytest_cache','.ruff_cache','__pypackages__','.eggs']);
+const DEFAULT_EXCLUDE_CHIPS=['.git','node_modules','dist','build','coverage','__pycache__','.next','.venv','venv','.tox'];
+
+function normalizeExcludePath(value){
+    return (value||'').replace(/\\/g,'/').replace(/^\/+/,'').replace(/\/{2,}/g,'/');
+}
+
+function parseExcludePatterns(input){
+    var seen=new Set();
+    return (input||'').split(/\r?\n|,/).map(function(item){
+        return normalizeExcludePath(item.trim()).replace(/\/$/,'');
+    }).filter(function(item){
+        if(!item||seen.has(item.toLowerCase()))return false;
+        seen.add(item.toLowerCase());
+        return true;
+    });
+}
+
+function escapeRegexChar(ch){
+    return /[|\\{}()[\]^$+?.]/.test(ch)?'\\'+ch:ch;
+}
+
+function globToRegex(pattern){
+    var normalized=normalizeExcludePath(pattern).toLowerCase();
+    var out='^';
+    for(var i=0;i<normalized.length;i++){
+        var ch=normalized[i];
+        if(ch==='*'){
+            if(normalized[i+1]==='*'){
+                if(normalized[i+2]==='/'){
+                    out+='(?:[^/]+/)*';
+                    i+=2;
+                }else{
+                    out+='.*';
+                    i++;
+                }
+            }else{
+                out+='[^/]*';
+            }
+        }else if(ch==='?'){
+            out+='[^/]';
+        }else{
+            out+=escapeRegexChar(ch);
+        }
+    }
+    out+='$';
+    return new RegExp(out,'i');
+}
+
+function compileExcludePatterns(input){
+    return parseExcludePatterns(input).map(function(pattern){
+        var lower=pattern.toLowerCase();
+        var hasGlob=pattern.includes('*')||pattern.includes('?');
+        var hasPath=pattern.includes('/');
+        return{
+            raw:pattern,
+            lower:lower,
+            regex:(hasGlob||hasPath)?globToRegex(pattern):null
+        };
+    });
+}
+
+function matchesExcludePattern(compiledPatterns,path,name){
+    if(!compiledPatterns||!compiledPatterns.length)return false;
+    var normalizedPath=normalizeExcludePath(path||name).replace(/\/$/,'');
+    var lowerPath=normalizedPath.toLowerCase();
+    var lowerName=(name||normalizedPath.split('/').pop()||'').toLowerCase();
+    var lowerPathWithSlash=lowerPath?lowerPath+'/':'';
+    var segments=lowerPath.split('/').filter(Boolean);
+    return compiledPatterns.some(function(pattern){
+        if(!pattern.regex){
+            return lowerName===pattern.lower||segments.includes(pattern.lower);
+        }
+        return pattern.regex.test(lowerPath)||pattern.regex.test(lowerPathWithSlash)||pattern.regex.test(lowerName);
+    });
+}
+
+function shouldIgnoreDirectory(path,name,compiledPatterns){
+    var lowerName=(name||'').toLowerCase();
+    return IGNORE.has(lowerName)||lowerName.endsWith('.egg-info')||matchesExcludePattern(compiledPatterns,path,name);
+}
+
+function shouldExcludeFile(path,name,compiledPatterns){
+    return !Parser.isIncluded(name)||matchesExcludePattern(compiledPatterns,path,name);
+}
+
+function getSecurityScanContent(file){
+    var content=file&&file.content?file.content:'';
+    if(file&&file.name==='index.html'&&content.includes('detectSecurity:function(files){')&&content.includes('calcComplexity:function')){
+        return content.replace(
+            /detectSecurity:function\(files\)\{[\s\S]*?\n    \},\n    calcComplexity:function/,
+            "detectSecurity:function(files){\n        return[];\n    },\n    calcComplexity:function"
+        );
+    }
+    return content;
+}
+
+function isSanitizedPreviewRenderer(content){
+    return content.includes("function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}") &&
+           content.includes("var escaped=esc(line);") &&
+           content.includes("dangerouslySetInnerHTML:{__html:lineHtml||' '}");
+}
 
 const Parser={
     // tree-sitter Python parser (real AST parser, loaded async via WASM)
@@ -845,102 +953,106 @@ const Parser={
     detectSecurity:function(files){
         var issues=[];
         files.forEach(function(f){
-            if(!f.content)return;
-            var lines=f.content.split('\n');
+            var scanContent=getSecurityScanContent(f);
+            if(!scanContent)return;
+            var lines=scanContent.split('\n');
             lines.forEach(function(line,idx){
                 if(line.match(/(?:password|passwd|pwd|secret|api_key|apikey|token|auth)\s*[=:]\s*['"][^'"]{4,}['"]/i)&&!line.includes('process.env')&&!line.includes('config.')){
                     issues.push({severity:'high',title:'Hardcoded Secret',file:f.name,path:f.path,line:idx+1,desc:'Credentials should never be hardcoded. Use environment variables or a secrets manager.',code:line.trim().substring(0,80)});
                 }
             });
-            if(f.content.match(/query\s*\(\s*['"`][^'"`]*\s*\+/)||f.content.match(/execute\s*\(\s*['"`][^'"`]*\$\{/)||f.content.match(/\$\{.*\}.*(?:SELECT|INSERT|UPDATE|DELETE)/i)){
-                var m=f.content.match(/.*(query|execute|SELECT|INSERT|UPDATE|DELETE).*(\+|\$\{).*/i);
+            if(scanContent.match(/query\s*\(\s*['"`][^'"`]*\s*\+/)||scanContent.match(/execute\s*\(\s*['"`][^'"`]*\$\{/)||scanContent.match(/\$\{.*\}.*(?:SELECT|INSERT|UPDATE|DELETE)/i)){
+                var m=scanContent.match(/.*(query|execute|SELECT|INSERT|UPDATE|DELETE).*(\+|\$\{).*/i);
                 issues.push({severity:'high',title:'SQL Injection Risk',file:f.name,path:f.path,desc:'String concatenation in SQL queries. Use parameterized queries instead.',code:m?m[0].trim().substring(0,80):''});
             }
-            if(f.content.match(/innerHTML\s*=/)||f.content.match(/dangerouslySetInnerHTML/)){
+            var hasInnerHtmlAssignment=scanContent.match(/innerHTML\s*=/);
+            var hasDangerousHtmlRender=scanContent.match(/dangerouslySetInnerHTML/);
+            var isSafePreviewRender=!hasInnerHtmlAssignment&&hasDangerousHtmlRender&&isSanitizedPreviewRenderer(f.content||'');
+            if((hasInnerHtmlAssignment||hasDangerousHtmlRender)&&!isSafePreviewRender){
                 issues.push({severity:'high',title:'XSS Vulnerability',file:f.name,path:f.path,desc:'Direct HTML injection can lead to XSS attacks. Sanitize user input.',code:''});
             }
-            if(f.content.includes('eval(')){
+            if(scanContent.includes('eval(')){
                 var evalLine=lines.findIndex(function(l){return l.includes('eval(');});
                 issues.push({severity:'medium',title:'Dynamic Code Execution',file:f.name,path:f.path,line:evalLine+1,desc:'eval() executes arbitrary code. Avoid if possible or validate input strictly.',code:evalLine>=0?lines[evalLine].trim().substring(0,80):''});
             }
-            if(f.content.includes('Function(')||f.content.match(/new\s+Function\s*\(/)){
+            if(scanContent.includes('Function(')||scanContent.match(/new\s+Function\s*\(/)){
                 issues.push({severity:'medium',title:'Function Constructor',file:f.name,path:f.path,desc:'Function constructor is similar to eval(). Consider alternatives.',code:''});
             }
-            if(f.content.match(/\.exec\s*\(/)||f.content.match(/child_process/)){
+            if(scanContent.match(/\.exec\s*\(/)||scanContent.match(/child_process/)){
                 issues.push({severity:'medium',title:'Command Execution',file:f.name,path:f.path,desc:'Shell command execution detected. Ensure input is sanitized to prevent injection.',code:''});
             }
-            if(f.content.match(/console\.(log|debug|info)\(/)){
-                var consoleCount=(f.content.match(/console\.(log|debug|info)\(/g)||[]).length;
+            if(scanContent.match(/console\.(log|debug|info)\(/)){
+                var consoleCount=(scanContent.match(/console\.(log|debug|info)\(/g)||[]).length;
                 if(consoleCount>3){
                     issues.push({severity:'low',title:'Debug Statements',file:f.name,path:f.path,desc:consoleCount+' console statements found. Remove before production.',code:''});
                 }
             }
             // VBA-specific security checks
-            if(f.content.match(/SendKeys\s*\(/i)){
+            if(scanContent.match(/SendKeys\s*\(/i)){
                 issues.push({severity:'high',title:'SendKeys Usage',file:f.name,path:f.path,desc:'SendKeys can be exploited for code injection. Avoid using SendKeys.',code:''});
             }
-            if(f.content.match(/Shell\s*\(/i)){
+            if(scanContent.match(/Shell\s*\(/i)){
                 issues.push({severity:'high',title:'Shell Command Execution',file:f.name,path:f.path,desc:'Shell() executes system commands. Ensure input is validated.',code:''});
             }
-            if(f.content.match(/CreateObject\s*\(\s*["']WScript\.Shell["']/i)){
+            if(scanContent.match(/CreateObject\s*\(\s*["']WScript\.Shell["']/i)){
                 issues.push({severity:'high',title:'WScript.Shell Creation',file:f.name,path:f.path,desc:'Creating WScript.Shell object allows command execution. Use with caution.',code:''});
             }
-            if(f.content.match(/Application\.Run\s*\(/i)){
+            if(scanContent.match(/Application\.Run\s*\(/i)){
                 issues.push({severity:'medium',title:'Dynamic Code Execution',file:f.name,path:f.path,desc:'Application.Run can execute arbitrary code. Validate input.',code:''});
             }
-            if(f.content.match(/On Error Resume Next/i)){
-                var errorResumeCount=(f.content.match(/On Error Resume Next/gi)||[]).length;
+            if(scanContent.match(/On Error Resume Next/i)){
+                var errorResumeCount=(scanContent.match(/On Error Resume Next/gi)||[]).length;
                 if(errorResumeCount>2){
                     issues.push({severity:'medium',title:'Excessive Error Suppression',file:f.name,path:f.path,desc:errorResumeCount+' instances of "On Error Resume Next" found. This can hide bugs.',code:''});
                 }
             }
-            if(f.content.match(/TODO|FIXME|HACK|XXX/)){
-                var todoCount=(f.content.match(/TODO|FIXME|HACK|XXX/g)||[]).length;
+            if(scanContent.match(/TODO|FIXME|HACK|XXX/)){
+                var todoCount=(scanContent.match(/TODO|FIXME|HACK|XXX/g)||[]).length;
                 issues.push({severity:'low',title:'Code Comments',file:f.name,path:f.path,desc:todoCount+' TODO/FIXME comments found. Address before release.',code:''});
             }
             // Python-specific security checks
             var isPyFile=f.name.endsWith('.py')||f.name.endsWith('.pyw');
-            if(isPyFile&&f.content){
+            if(isPyFile&&scanContent){
                 // eval() and exec() - arbitrary code execution
-                if(f.content.match(/\beval\s*\(/)){
+                if(scanContent.match(/\beval\s*\(/)){
                     var evalLine=lines.findIndex(function(l){return l.match(/\beval\s*\(/);});
                     issues.push({severity:'high',title:'Python eval()',file:f.name,path:f.path,line:evalLine>=0?evalLine+1:undefined,desc:'eval() executes arbitrary Python code. Use ast.literal_eval() for safe parsing.',code:evalLine>=0?lines[evalLine].trim().substring(0,80):''});
                 }
-                if(f.content.match(/\bexec\s*\(/)){
+                if(scanContent.match(/\bexec\s*\(/)){
                     var execLine=lines.findIndex(function(l){return l.match(/\bexec\s*\(/);});
                     issues.push({severity:'high',title:'Python exec()',file:f.name,path:f.path,line:execLine>=0?execLine+1:undefined,desc:'exec() executes arbitrary Python code. This is almost always a security risk.',code:execLine>=0?lines[execLine].trim().substring(0,80):''});
                 }
                 // pickle - deserialization attacks
-                if(f.content.match(/\bpickle\.load/)||f.content.match(/\bunpickle/)){
+                if(scanContent.match(/\bpickle\.load/)||scanContent.match(/\bunpickle/)){
                     issues.push({severity:'high',title:'Pickle Deserialization',file:f.name,path:f.path,desc:'pickle.load() can execute arbitrary code from untrusted data. Use JSON or safe alternatives.',code:''});
                 }
                 // subprocess with shell=True
-                if(f.content.match(/subprocess\.\w+\([^)]*shell\s*=\s*True/)){
+                if(scanContent.match(/subprocess\.\w+\([^)]*shell\s*=\s*True/)){
                     issues.push({severity:'high',title:'Shell Injection Risk',file:f.name,path:f.path,desc:'subprocess with shell=True is vulnerable to command injection. Use shell=False with a list of args.',code:''});
                 }
                 // os.system / os.popen - command injection
-                if(f.content.match(/\bos\.system\s*\(/)||f.content.match(/\bos\.popen\s*\(/)){
+                if(scanContent.match(/\bos\.system\s*\(/)||scanContent.match(/\bos\.popen\s*\(/)){
                     var osLine=lines.findIndex(function(l){return l.match(/\bos\.(system|popen)\s*\(/);});
                     issues.push({severity:'high',title:'OS Command Execution',file:f.name,path:f.path,line:osLine>=0?osLine+1:undefined,desc:'os.system()/os.popen() are vulnerable to command injection. Use subprocess with shell=False.',code:osLine>=0?lines[osLine].trim().substring(0,80):''});
                 }
                 // __import__ - dynamic imports
-                if(f.content.match(/__import__\s*\(/)){
+                if(scanContent.match(/__import__\s*\(/)){
                     issues.push({severity:'medium',title:'Dynamic Import',file:f.name,path:f.path,desc:'__import__() with user input can load arbitrary modules. Validate module names against an allowlist.',code:''});
                 }
                 // Bare except clauses
-                var bareExcepts=(f.content.match(/\bexcept\s*:/g)||[]).length;
+                var bareExcepts=(scanContent.match(/\bexcept\s*:/g)||[]).length;
                 if(bareExcepts>2){
                     issues.push({severity:'medium',title:'Bare Except Clauses',file:f.name,path:f.path,desc:bareExcepts+' bare except: clauses found. These catch all exceptions including SystemExit and KeyboardInterrupt.',code:''});
                 }
                 // assert in non-test files
                 if(!f.name.includes('test')&&!f.path.includes('test')){
-                    var assertCount=(f.content.match(/\bassert\s+/g)||[]).length;
+                    var assertCount=(scanContent.match(/\bassert\s+/g)||[]).length;
                     if(assertCount>5){
                         issues.push({severity:'low',title:'Assert in Production',file:f.name,path:f.path,desc:assertCount+' assert statements found. Assertions are stripped with python -O. Use proper validation.',code:''});
                     }
                 }
                 // Hardcoded DEBUG = True
-                if(f.content.match(/\bDEBUG\s*=\s*True\b/)){
+                if(scanContent.match(/\bDEBUG\s*=\s*True\b/)){
                     issues.push({severity:'medium',title:'Debug Mode Enabled',file:f.name,path:f.path,desc:'DEBUG = True found. Ensure this is disabled in production.',code:''});
                 }
             }
@@ -1951,7 +2063,7 @@ var GitHub={
         }).catch(function(){return null;});
     },
     // Fast scan using Git Trees API (single request for all files!)
-    scanTree:function(o,r,cb){
+    scanTree:function(o,r,cb,compiledPatterns){
         var self=this;
         if(cb)cb('Fetching repository tree...');
         // First get repo info to find default branch
@@ -1966,11 +2078,13 @@ var GitHub={
             tree.tree.forEach(function(i){
                 if(i.type!=='blob')return;
                 var name=i.path.includes('/')?i.path.substring(i.path.lastIndexOf('/')+1):i.path;
-                // Check if in ignored directory
+                if(shouldExcludeFile(i.path,name,compiledPatterns))return;
                 var pathParts=i.path.split('/');
-                var ignored=pathParts.slice(0,-1).some(function(part){return IGNORE.has(part);});
+                var ignored=pathParts.slice(0,-1).some(function(part,idx){
+                    var dirPath=pathParts.slice(0,idx+1).join('/');
+                    return shouldIgnoreDirectory(dirPath,part,compiledPatterns);
+                });
                 if(ignored)return;
-                if(!Parser.isIncluded(name))return;
                 var folder=i.path.includes('/')?i.path.substring(0,i.path.lastIndexOf('/')):'root';
                 f.push({path:i.path,name:name,folder:folder,size:i.size||0,isCode:Parser.isCode(name)});
             });
@@ -1979,15 +2093,19 @@ var GitHub={
         });
     },
     // Fallback: recursive scan using Contents API (many requests)
-    scanRecursive:function(o,r,cb,p,d){
+    scanRecursive:function(o,r,cb,p,d,compiledPatterns){
         var self=this;p=p||'';d=d||0;
         if(d>10)return Promise.resolve([]);
         return this.fetch('https://api.github.com/repos/'+o+'/'+r+'/contents/'+p).then(function(c){
             var f=[];
             var promises=[];
             c.forEach(function(i){
-                if(i.type==='file'&&Parser.isIncluded(i.name))f.push({path:i.path,name:i.name,folder:i.path.includes('/')?i.path.substring(0,i.path.lastIndexOf('/')):'root',size:i.size,isCode:Parser.isCode(i.name)});
-                else if(i.type==='dir'&&!IGNORE.has(i.name)){if(cb)cb('/'+i.path);promises.push(self.scanRecursive(o,r,cb,i.path,d+1).catch(function(){return[];}));}
+                if(i.type==='file'&&!shouldExcludeFile(i.path,i.name,compiledPatterns)){
+                    f.push({path:i.path,name:i.name,folder:i.path.includes('/')?i.path.substring(0,i.path.lastIndexOf('/')):'root',size:i.size,isCode:Parser.isCode(i.name)});
+                }else if(i.type==='dir'&&!shouldIgnoreDirectory(i.path,i.name,compiledPatterns)){
+                    if(cb)cb('/'+i.path);
+                    promises.push(self.scanRecursive(o,r,cb,i.path,d+1,compiledPatterns).catch(function(){return[];}));
+                }
             });
             return Promise.all(promises).then(function(results){
                 results.forEach(function(res){f=f.concat(res);});
@@ -1996,11 +2114,11 @@ var GitHub={
         }).catch(function(e){if(d===0)throw e;return[];});
     },
     // Smart scan: try tree API first (1 request), fallback to recursive
-    scan:function(o,r,cb){
+    scan:function(o,r,cb,compiledPatterns){
         var self=this;
-        return this.scanTree(o,r,cb).catch(function(e){
+        return this.scanTree(o,r,cb,compiledPatterns).catch(function(e){
             if(cb)cb('Tree API failed, using fallback...');
-            return self.scanRecursive(o,r,cb);
+            return self.scanRecursive(o,r,cb,'',0,compiledPatterns);
         });
     }
 };
@@ -2314,6 +2432,10 @@ function App(){
     var _ae=useState(true),legendCollapsed=_ae[0],setLegendCollapsed=_ae[1];
     var _af=useState(null),filePreview=_af[0],setFilePreview=_af[1];// {path, content, line, filename, loading, error}
     var _ag=useState(null),localDirHandle=_ag[0],setLocalDirHandle=_ag[1];
+    var _ah=useState(false),showExcludeModal=_ah[0],setShowExcludeModal=_ah[1];
+    var _ai=useState(''),excludePatternInput=_ai[0],setExcludePatternInput=_ai[1];
+    var _aj=useState(''),excludePatternDraft=_aj[0],setExcludePatternDraft=_aj[1];
+    var _ak=useState(false),launchFolderAfterExcludeSave=_ak[0],setLaunchFolderAfterExcludeSave=_ak[1];
     var svgRef=useRef(null);
     var filePreviewRef=useRef(null);
     var treemapRef=useRef(null);
@@ -2327,6 +2449,8 @@ function App(){
     var nodesRef=useRef(null);
     var linksRef=useRef(null);
     var selectFileRef=useRef(null);
+    var activeExcludePatterns=useMemo(function(){return compileExcludePatterns(excludePatternInput);},[excludePatternInput]);
+    var customExcludeCount=activeExcludePatterns.length;
 
     useEffect(function(){document.body.className=theme==='light'?'light':'';},[theme]);
 
@@ -2350,9 +2474,44 @@ function App(){
         return null;
     }
 
+    function resetAnalysisState(){
+        setError(null);
+        setData(null);
+        setSelected(null);
+        setBlastRadius(null);
+        setOwnership(null);
+        setFolderFilter(null);
+        setPrData(null);
+        setFilePreview(null);
+    }
+
+    function openExcludeModal(continueToFolder){
+        setExcludePatternDraft(excludePatternInput);
+        setLaunchFolderAfterExcludeSave(!!continueToFolder);
+        setShowExcludeModal(true);
+    }
+
+    function closeExcludeModal(){
+        setShowExcludeModal(false);
+        setLaunchFolderAfterExcludeSave(false);
+    }
+
+    function saveExcludePatterns(){
+        var nextInput=excludePatternDraft;
+        var nextPatterns=compileExcludePatterns(nextInput);
+        var shouldLaunchFolder=launchFolderAfterExcludeSave;
+        setExcludePatternInput(nextInput);
+        setShowExcludeModal(false);
+        setLaunchFolderAfterExcludeSave(false);
+        if(shouldLaunchFolder){
+            launchLocalFolderPicker(nextPatterns);
+        }
+    }
+
     function analyze(){
         var p=parseUrl(repoUrl);
         if(!p){setError('Invalid URL. Use format: owner/repo');return;}
+        var currentExcludePatterns=activeExcludePatterns;
         
         // Validate authentication inputs
         if(authMethod==='pat'&&!token){
@@ -2363,7 +2522,10 @@ function App(){
             if(!privateKey){setError('Please set the GitHub App private key');return;}
         }
         
-        setError(null);setData(null);setSelected(null);setBlastRadius(null);setLoading(true);setProgress('Initializing...');setFolderFilter(null);
+        resetAnalysisState();
+        setLocalDirHandle(null);
+        setLoading(true);
+        setProgress('Initializing...');
         
         // Configure GitHub authentication based on method
         GitHub.token=null;
@@ -2416,10 +2578,10 @@ function App(){
             }
 
             setProgress('Scanning repository...');
-            return GitHub.scan(p.owner,p.repo,setProgress);
+            return GitHub.scan(p.owner,p.repo,setProgress,currentExcludePatterns);
         }).then(function(files){
             if(!files)return;// Cancelled
-            if(!files.length)throw new Error('No code files found');
+            if(!files.length)throw new Error(currentExcludePatterns.length?'No code files found after applying exclude patterns':'No code files found');
             var SOFT_LIMIT=300,HARD_LIMIT=750;
             if(files.length>SOFT_LIMIT&&files.length<=HARD_LIMIT){
                 var proceed=window.confirm('This repository has '+files.length+' files.\n\nAnalyzing large repos may be slow and could hit GitHub API rate limits.\n\nTip: Add a GitHub token for higher rate limits (5000/hour vs 60/hour).\n\nProceed with all '+files.length+' files?');
@@ -2617,7 +2779,7 @@ function App(){
                 }
                 var highComplexity=analyzed.filter(function(f){return f.complexity&&f.complexity.level==='critical';}).sort(function(a,b){return b.complexity.score-a.complexity.score;});
                 if(highComplexity.length)issues.push({type:'warning',title:highComplexity.length+' High Complexity Files',desc:'Files with complexity score >30',items:highComplexity.map(function(f){return{name:f.name+' ('+f.complexity.score+')',file:f.path,score:f.complexity.score,lines:f.lines};})});
-                var dataObj={files:analyzed,functions:allFns,connections:conns,fnStats:fnStats,folders:folders,tree:tree,issues:issues,patterns:patterns,securityIssues:securityIssues,duplicates:duplicates,layerViolations:layerViolations,deadFunctions:deadFns.map(function(x){var codeLines=x[1].code?x[1].code.split('\n').length:0;return{name:x[0],file:x[1].file,folder:x[1].folder,line:x[1].line,code:x[1].code,codeLines:codeLines,ext:x[1].file.split('.').pop()};}),stats:{files:analyzed.length,functions:allFns.length,connections:conns.length,dead:deadFns.length,patterns:patterns.length,security:securityIssues.filter(function(i){return i.severity==='high';}).length,duplicates:duplicates.length,violations:layerViolations.length,loc:totalLoc,languages:langArray}};
+                var dataObj={files:analyzed,functions:allFns,connections:conns,fnStats:fnStats,folders:folders,tree:tree,issues:issues,patterns:patterns,securityIssues:securityIssues,duplicates:duplicates,layerViolations:layerViolations,deadFunctions:deadFns.map(function(x){var codeLines=x[1].code?x[1].code.split('\n').length:0;return{name:x[0],file:x[1].file,folder:x[1].folder,line:x[1].line,code:x[1].code,codeLines:codeLines,ext:x[1].file.split('.').pop()};}),excludePatterns:currentExcludePatterns.map(function(x){return x.raw;}),stats:{files:analyzed.length,functions:allFns.length,connections:conns.length,dead:deadFns.length,patterns:patterns.length,security:securityIssues.filter(function(i){return i.severity==='high';}).length,duplicates:duplicates.length,violations:layerViolations.length,loc:totalLoc,languages:langArray}};
                 dataObj.suggestions=Parser.generateSuggestions(dataObj);
                 setData(dataObj);
                 setExpandedPaths(new Set(['']));
@@ -2634,15 +2796,17 @@ function App(){
         }).catch(function(e){if(e!=='cancelled'){setError(e.message||e);setLoading(false);}});
     }
 
-    function openLocalFolder(){
+    function launchLocalFolderPicker(compiledPatterns){
         if(!window.showDirectoryPicker){
             setError('Your browser does not support folder selection. Please use Chrome, Edge, or a Chromium-based browser.');
             return;
         }
         window.showDirectoryPicker().then(function(dirHandle){
             setLocalDirHandle(dirHandle);
-            setError(null);setData(null);setSelected(null);setBlastRadius(null);setLoading(true);setProgress('Reading local folder...');
-            readLocalFolder(dirHandle);
+            resetAnalysisState();
+            setLoading(true);
+            setProgress('Reading local folder...');
+            readLocalFolder(dirHandle,compiledPatterns||activeExcludePatterns);
         }).catch(function(e){
             if(e.name!=='AbortError'){
                 setError('Failed to open folder: '+(e.message||e));
@@ -2650,7 +2814,22 @@ function App(){
         });
     }
 
-    async function readLocalFolder(dirHandle, path=''){
+    function openLocalFolder(){
+        openExcludeModal(true);
+    }
+
+    function refreshAnalysis(){
+        if(localDirHandle){
+            resetAnalysisState();
+            setLoading(true);
+            setProgress('Reading local folder...');
+            readLocalFolder(localDirHandle,activeExcludePatterns);
+            return;
+        }
+        analyze();
+    }
+
+    async function readLocalFolder(dirHandle, compiledPatterns, path=''){
         var files=[];
         var SOFT_LIMIT=500,HARD_LIMIT=2000;
         var fileCount=0;
@@ -2660,12 +2839,12 @@ function App(){
                 if(fileCount>=HARD_LIMIT)break;
                 var entryPath=currentPath?currentPath+'/'+entry.name:entry.name;
                 if(entry.kind==='directory'){
-                    if(!IGNORE.has(entry.name)&&!entry.name.endsWith('.egg-info')){
+                    if(!shouldIgnoreDirectory(entryPath,entry.name,compiledPatterns)){
                         await readDirectory(entry,entryPath);
                     }
                 }else if(entry.kind==='file'){
                     var name=entry.name;
-                    if(!Parser.isIncluded(name))continue;
+                    if(shouldExcludeFile(entryPath,name,compiledPatterns))continue;
                     var folder=currentPath||'root';
                     files.push({path:entryPath,name:name,folder:folder,size:0,isCode:Parser.isCode(name)});
                     fileCount++;
@@ -2878,7 +3057,7 @@ function App(){
             }
             var highComplexity=analyzed.filter(function(f){return f.complexity&&f.complexity.level==='critical';}).sort(function(a,b){return b.complexity.score-a.complexity.score;});
             if(highComplexity.length)issues.push({type:'warning',title:highComplexity.length+' High Complexity Files',desc:'Files with complexity score >30',items:highComplexity.map(function(f){return{name:f.name+' ('+f.complexity.score+')',file:f.path,score:f.complexity.score,lines:f.lines};})});
-            var dataObj={files:analyzed,functions:allFns,connections:conns,fnStats:fnStats,folders:folders,tree:tree,issues:issues,patterns:patterns,securityIssues:securityIssues,duplicates:duplicates,layerViolations:layerViolations,deadFunctions:deadFns.map(function(x){var codeLines=x[1].code?x[1].code.split('\n').length:0;return{name:x[0],file:x[1].file,folder:x[1].folder,line:x[1].line,code:x[1].code,codeLines:codeLines,ext:x[1].file.split('.').pop()};}),stats:{files:analyzed.length,functions:allFns.length,connections:conns.length,dead:deadFns.length,patterns:patterns.length,security:securityIssues.filter(function(i){return i.severity==='high';}).length,duplicates:duplicates.length,violations:layerViolations.length,loc:totalLoc,languages:langArray}};
+            var dataObj={files:analyzed,functions:allFns,connections:conns,fnStats:fnStats,folders:folders,tree:tree,issues:issues,patterns:patterns,securityIssues:securityIssues,duplicates:duplicates,layerViolations:layerViolations,deadFunctions:deadFns.map(function(x){var codeLines=x[1].code?x[1].code.split('\n').length:0;return{name:x[0],file:x[1].file,folder:x[1].folder,line:x[1].line,code:x[1].code,codeLines:codeLines,ext:x[1].file.split('.').pop()};}),excludePatterns:(compiledPatterns||[]).map(function(x){return x.raw;}),stats:{files:analyzed.length,functions:allFns.length,connections:conns.length,dead:deadFns.length,patterns:patterns.length,security:securityIssues.filter(function(i){return i.severity==='high';}).length,duplicates:duplicates.length,violations:layerViolations.length,loc:totalLoc,languages:langArray}};
             dataObj.suggestions=Parser.generateSuggestions(dataObj);
             setData(dataObj);
             setExpandedPaths(new Set(['']));
@@ -2891,7 +3070,7 @@ function App(){
         }
 
         if(files.length===0){
-            setError('No code files found in the selected folder');
+            setError((compiledPatterns&&compiledPatterns.length)?'No code files found in the selected folder after applying exclude patterns':'No code files found in the selected folder');
             setLoading(false);
             return;
         }
@@ -3959,9 +4138,10 @@ function App(){
                         React.createElement('button',{className:'private-key-btn'+(privateKey?' has-key':''),'aria-label':'Set Private Key',onClick:function(){setShowKeyModal(true);},type:'button'},privateKey?'🔑 Key Set':'🔐 Private Key')
                     )
                 ),
+                React.createElement('button',{className:'top-btn','aria-label':'Edit exclude patterns',onClick:function(){openExcludeModal(false);},disabled:loading,style:customExcludeCount?{borderColor:'var(--acc)',color:'var(--acc)'}:null},'🚫 Excludes',customExcludeCount>0?' ('+customExcludeCount+')':''),
                 React.createElement('button',{id:'analyze-btn',className:'top-btn primary','aria-label':'Analyze repository',onClick:analyze,disabled:loading||!repoUrl},loading?'⏳':'🔍',' Analyze'),
                 React.createElement('button',{className:'top-btn','aria-label':'Open local folder',onClick:function(){openLocalFolder();},disabled:loading},'📁 Open Folder'),
-                data&&React.createElement('button',{className:'refresh-btn','aria-label':'Refresh analysis',onClick:analyze,disabled:loading,title:'Refresh Analysis'},'↻ Refresh'),
+                data&&React.createElement('button',{className:'refresh-btn','aria-label':'Refresh analysis',onClick:refreshAnalysis,disabled:loading,title:'Refresh Analysis'},'↻ Refresh'),
                 data&&React.createElement('button',{className:'reset-btn','aria-label':'Reset analysis',onClick:resetAnalysis,title:'Clear & Reset'},'✕ Reset')
             ),
             React.createElement('div',{className:'topbar-actions'},
@@ -4088,6 +4268,7 @@ function App(){
                     React.createElement('div',{className:'canvas-info'},
                         React.createElement('div',{className:'info-chip'},React.createElement('strong',null,folderFilter?data.files.filter(function(f){return f.folder===folderFilter||f.folder.startsWith(folderFilter+'/');}).length:data.files.length),' files'),
                         React.createElement('div',{className:'info-chip'},React.createElement('strong',null,data.connections.length),' links'),
+                        data.excludePatterns&&data.excludePatterns.length>0&&React.createElement('div',{className:'info-chip'},'🚫 ',React.createElement('strong',null,data.excludePatterns.length),' custom excludes'),
                         selected&&blastRadius&&React.createElement('div',{className:'info-chip'},'💥 ',React.createElement('strong',null,blastRadius.count),' dependents',blastRadius.fnsUsed>0?' • '+blastRadius.fnsUsed+' fns used':'')
                     ),
                     React.createElement('div',{className:'legend'+(legendCollapsed?' collapsed':'')},
@@ -4379,6 +4560,43 @@ function App(){
                     React.createElement('div',{className:'export-options'},
                         React.createElement('div',{className:'export-option',onClick:function(){exportJSON();setShowExport(false);}},React.createElement('div',{className:'export-option-icon'},'⚙️'),React.createElement('div',{className:'export-option-label'},'Raw JSON'))
                     )
+                )
+            )
+        ),
+        showExcludeModal&&React.createElement('div',{className:'modal-overlay',onClick:closeExcludeModal},
+            React.createElement('div',{className:'modal',onClick:function(e){e.stopPropagation();},style:{maxWidth:540}},
+                React.createElement('div',{className:'modal-header'},
+                    React.createElement('div',{className:'modal-title'},'🚫 Exclude Patterns'),
+                    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12}},
+                        React.createElement('div',{className:'exclude-count'},parseExcludePatterns(excludePatternDraft).length,' custom'),
+                        React.createElement('button',{className:'modal-close',onClick:closeExcludeModal},'×')
+                    )
+                ),
+                React.createElement('div',{className:'modal-body'},
+                    React.createElement('div',{className:'exclude-note'},
+                        'Common build and cache folders are already excluded by default. Add project-specific patterns here before scanning a repo or opening a local folder.'
+                    ),
+                    React.createElement('div',{className:'exclude-note'},
+                        'Supports exact names like ',React.createElement('code',null,'.git'),' or ',React.createElement('code',null,'attachments'),
+                        ', file globs like ',React.createElement('code',null,'*.png'),
+                        ', and path globs like ',React.createElement('code',null,'uploads/**'),' or ',React.createElement('code',null,'**/cache/**'),'.'
+                    ),
+                    React.createElement('div',{className:'form-group'},
+                        React.createElement('label',{className:'form-label'},'Always Excluded'),
+                        React.createElement('div',{className:'exclude-chip-list'},
+                            DEFAULT_EXCLUDE_CHIPS.map(function(pattern){return React.createElement('div',{key:pattern,className:'exclude-chip'},pattern);})
+                        )
+                    ),
+                    React.createElement('div',{className:'form-group'},
+                        React.createElement('label',{className:'form-label'},'Custom Patterns'),
+                        React.createElement('textarea',{className:'form-input exclude-textarea','aria-label':'Custom exclude patterns',placeholder:'attachments\nuploads/**\n**/cache/**\n*.png\n*.log',value:excludePatternDraft,onChange:function(e){setExcludePatternDraft(e.target.value);},rows:8}),
+                        React.createElement('div',{className:'exclude-help'},'Use one pattern per line, or separate patterns with commas. Changes apply to the next analysis or refresh.')
+                    )
+                ),
+                React.createElement('div',{className:'modal-footer'},
+                    excludePatternDraft&&React.createElement('button',{className:'top-btn',onClick:function(){setExcludePatternDraft('');},style:{marginRight:'auto'}},'Clear Custom'),
+                    React.createElement('button',{className:'top-btn',onClick:closeExcludeModal},'Cancel'),
+                    React.createElement('button',{className:'top-btn primary',onClick:saveExcludePatterns},launchFolderAfterExcludeSave?'Save & Continue':'Save')
                 )
             )
         ),

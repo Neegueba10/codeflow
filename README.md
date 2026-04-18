@@ -77,6 +77,7 @@ Analyze code directly from your computer without uploading to GitHub:
 - **Offline Support:** Works without internet connection
 - **Drag & Drop:** Simply drag files or folders to analyze
 - **Folder Scanning:** Recursively analyze entire project structures
+- **Exclude Patterns:** Skip attachments, caches, generated assets, and other irrelevant paths before scanning
 - **Instant Results:** All processing happens in your browser
 
 ---
@@ -145,6 +146,7 @@ Click the "📁 Local Files" button to analyze code from your computer:
 - **Folder Analysis:** Select a folder to analyze all supported files recursively
 - **File Selection:** Choose specific files to analyze
 - **Drag & Drop:** Drag files or folders directly onto the page
+- **Custom Excludes:** Add patterns like `uploads/**`, `**/cache/**`, or `*.png` before scanning
 
 All processing happens locally in your browser - nothing is uploaded.
 
