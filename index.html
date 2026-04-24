@@ -453,6 +453,7 @@ body{font-family:'JetBrains Mono',monospace;background:var(--bg0);color:var(--t0
 .exclude-count{font-size:9px;color:var(--t3);margin-left:auto}
 .mobile-panel-actions{display:none}
 .mobile-panel-actions .top-btn.active{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.mobile-brand-row,.mobile-source-controls,.mobile-primary-row,.mobile-secondary-row,.mobile-action-stack,.mobile-bottom-nav{display:none}
 .mobile-panel-backdrop{display:none}
 .mobile-panel-header{display:none}
 .mobile-panel-meta{min-width:0}
@@ -528,6 +529,64 @@ body{height:100dvh;min-height:100dvh}
 .file-preview-text{font-size:10px}
 .modal,.pr-modal{width:100vw;max-width:none;max-height:100dvh;border-radius:0}
 .modal-header,.modal-body,.modal-footer{padding-left:14px;padding-right:14px}
+}
+@media (max-width:980px){
+.topbar{display:flex;flex-direction:column;align-items:stretch;height:auto;min-height:0;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;gap:8px}
+.topbar>.logo,.topbar>.repo-input-group,.topbar>.topbar-actions{display:none}
+.mobile-panel-actions{display:none!important}
+.mobile-brand-row{display:flex;align-items:center;gap:10px;width:100%;min-height:36px}
+.mobile-brand-row .logo{min-height:36px}
+.mobile-brand-row .logo-mark{width:34px;height:34px}
+.mobile-brand-row .logo-text{font-size:14px}
+.mobile-action-stack{display:flex;align-items:center;gap:6px;margin-left:auto}
+.mobile-icon-btn{width:34px;height:34px;min-height:34px;padding:0;justify-content:center;border-radius:8px}
+.mobile-icon-btn .icon{width:15px;height:15px}
+.mobile-source-controls{display:flex;flex-direction:column;gap:7px;width:100%;min-width:0}
+.mobile-primary-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;width:100%}
+.mobile-primary-row .repo-input{height:42px;min-height:42px;border-radius:8px;font-size:12px}
+.mobile-primary-row .repo-input:first-child{min-width:0}
+.mobile-analyze-btn{width:44px;height:42px;min-height:42px;padding:0;justify-content:center;border-radius:8px}
+.mobile-analyze-btn .icon{width:16px;height:16px}
+.mobile-secondary-row{display:flex;align-items:stretch;gap:6px;width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mobile-secondary-row::-webkit-scrollbar{display:none}
+.mobile-secondary-row>*{flex:0 0 auto}
+.mobile-secondary-row .auth-select,.mobile-secondary-row .private-key-btn,.mobile-secondary-row .top-btn,.mobile-secondary-row .refresh-btn,.mobile-secondary-row .reset-btn{min-height:34px;height:34px;border-radius:8px;font-size:10px;padding:0 10px;margin-left:0;justify-content:center}
+.mobile-secondary-row .auth-select{width:116px}
+.mobile-secondary-row .auth-inputs{display:flex;align-items:stretch;gap:6px;flex:0 0 auto}
+.mobile-secondary-row .auth-inputs .repo-input{height:34px;min-height:34px;width:170px;flex:0 0 170px;font-size:10px}
+.mobile-secondary-row .private-key-btn{min-width:118px}
+.mobile-bottom-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:150;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--bg1);border-top:1px solid var(--border)}
+.mobile-bottom-nav .top-btn{min-height:42px;justify-content:center;border-radius:8px;padding:0 8px;font-size:10px}
+.mobile-bottom-nav .top-btn.active{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.main{padding-bottom:calc(59px + env(safe-area-inset-bottom))}
+.mobile-panel-backdrop{display:none}
+.sidebar,.right-panel{position:fixed;top:0;bottom:0;width:100vw!important;min-width:0;max-width:none;border:0;box-shadow:none;z-index:180;transition:transform 0.24s ease;overflow:hidden}
+.sidebar{left:0;transform:translateX(-100%)}
+.right-panel{right:0;transform:translateX(100%)}
+.sidebar.mobile-visible,.right-panel.mobile-visible{transform:translateX(0)}
+.mobile-panel-header{display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:calc(10px + env(safe-area-inset-top)) 12px 12px;border-bottom:1px solid var(--border);background:var(--bg1)}
+.mobile-panel-title{font-size:13px}
+.mobile-panel-subtitle{font-size:10px}
+.mobile-panel-close{width:38px;height:38px;border-radius:8px}
+.sidebar-section{padding:10px 12px}
+.sidebar-scroll,.panel-content{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.panel-tabs{position:sticky;top:0;z-index:2}
+.viz-selector{top:8px;left:10px;right:10px;transform:none;overflow-x:auto;justify-content:flex-start;padding:4px}
+.viz-selector-btn{flex:0 0 auto;min-height:32px;padding:0 10px;font-size:9px}
+.canvas-toolbar{top:auto;bottom:72px;left:10px;right:auto;gap:6px;overflow-x:visible;padding:4px;background:var(--bg1);border:1px solid var(--border);border-radius:10px}
+.tool-btn{width:38px;height:38px;font-size:14px;flex:0 0 auto}
+.graph-config{top:52px;left:10px;right:10px;width:auto;max-width:none}
+.legend{top:auto;bottom:72px;right:10px;max-width:calc(100vw - 20px)}
+.canvas-info{left:10px;right:10px;bottom:10px;overflow-x:auto;padding-bottom:0}
+.info-chip{white-space:nowrap;flex:0 0 auto}
+}
+@media (max-width:420px){
+.mobile-action-stack{gap:4px}
+.mobile-icon-btn{width:32px;height:32px;min-height:32px}
+.mobile-secondary-row .auth-select{width:106px}
+.mobile-secondary-row .top-btn,.mobile-secondary-row .refresh-btn,.mobile-secondary-row .reset-btn{padding:0 9px}
+.canvas-toolbar{bottom:70px}
+.legend{bottom:70px}
 }
     </style>
 </head>
@@ -5254,11 +5313,64 @@ function App(){
     function resetAnalysis(){setData(null);setSelected(null);setBlastRadius(null);setOwnership(null);setRepoInfo(null);setRepoUrl('');setPrData(null);setFolderFilter(null);setLocalDirHandle(null);window.history.replaceState({},'',window.location.pathname);}
     function filterByFolder(path){setFolderFilter(function(prev){return prev===path?null:path;});}
     var health=useMemo(function(){return calcHealth(data);},[data]);
-    var mobileSidebarWidth=Math.min(Math.max(viewportWidth-16,240),380);
-    var mobileRightPanelWidth=Math.min(Math.max(viewportWidth-16,240),460);
-
     return React.createElement('div',{className:'app',style:{'--topbar-height':topbarHeight+'px'}},
         React.createElement('div',{className:'topbar',ref:topbarRef},
+            isMobile&&React.createElement(React.Fragment,null,
+                React.createElement('div',{className:'mobile-brand-row'},
+                    React.createElement('div',{className:'logo',onClick:function(){setShowPrivacy(true);}},
+                        React.createElement('div',{className:'logo-mark'},React.createElement(Icon,{name:'logo',size:'l'})),
+                        React.createElement('span',{className:'logo-text'},'CODEFLOW')
+                    ),
+                    React.createElement('div',{className:'mobile-action-stack'},
+                        data&&!localDirHandle&&React.createElement('button',{className:'top-btn mobile-icon-btn','aria-label':'Analyze Pull Request',title:'Pull Request',onClick:function(){setShowPR(true);},type:'button'},React.createElement(Icon,{name:'pull-request',size:'m'})),
+                        data&&React.createElement('button',{className:'top-btn mobile-icon-btn','aria-label':'Export analysis',title:'Export',onClick:function(){setShowExport(true);},type:'button'},React.createElement(Icon,{name:'export',size:'m'})),
+                        data&&!localDirHandle&&React.createElement('button',{className:'top-btn mobile-icon-btn','aria-label':'Copy share link',title:'Share',onClick:copyLink,type:'button'},React.createElement(Icon,{name:'share',size:'m'})),
+                        React.createElement('button',{className:'top-btn mobile-icon-btn','aria-label':'Toggle theme',title:'Theme',onClick:function(){setTheme(function(t){return t==='dark'?'light':'dark';});},type:'button'},React.createElement(Icon,{name:theme==='dark'?'sun':'moon',size:'m'}))
+                    )
+                ),
+                React.createElement('div',{className:'mobile-source-controls'},
+                    React.createElement('div',{className:'mobile-primary-row'},
+                        React.createElement('input',{className:'repo-input','aria-label':'Repository URL',placeholder:'owner/repo or GitHub URL',value:repoUrl,onChange:function(e){setRepoUrl(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
+                        React.createElement('button',{id:'mobile-analyze-btn',className:'top-btn primary mobile-analyze-btn','aria-label':'Analyze repository',title:'Analyze',onClick:analyze,disabled:loading||!repoUrl,type:'button'},
+                            React.createElement(Icon,{name:loading?'activity':'search',size:'m'})
+                        )
+                    ),
+                    React.createElement('div',{className:'mobile-secondary-row'},
+                        React.createElement('select',{className:'auth-select','aria-label':'Authentication Method',value:authMethod,onChange:function(e){setAuthMethod(e.target.value);}},
+                            React.createElement('option',{value:'none'},'No Auth'),
+                            React.createElement('option',{value:'pat'},'Token'),
+                            React.createElement('option',{value:'github_app'},'App')
+                        ),
+                        React.createElement('div',{className:'auth-inputs'},
+                            authMethod==='pat'&&React.createElement('input',{className:'repo-input',type:'password','aria-label':'GitHub Token',placeholder:'Personal Access Token',value:token,onChange:function(e){setToken(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
+                            authMethod==='github_app'&&React.createElement(React.Fragment,null,
+                                React.createElement('input',{className:'repo-input','aria-label':'App ID',placeholder:'App ID',value:appId,onChange:function(e){setAppId(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
+                                React.createElement('button',{className:'private-key-btn'+(privateKey?' has-key':''),'aria-label':'Set Private Key',onClick:function(){setShowKeyModal(true);},type:'button'},
+                                    React.createElement(Icon,{name:privateKey?'key':'shield',size:'m'}),
+                                    privateKey?'Key':'Private Key'
+                                )
+                            )
+                        ),
+                        React.createElement('button',{className:'top-btn','aria-label':'Edit exclude patterns',onClick:function(){openExcludeModal(false);},disabled:loading,type:'button',style:customExcludeCount?{borderColor:'var(--acc)',color:'var(--acc)'}:null},
+                            React.createElement(Icon,{name:'ban',size:'m'}),
+                            'Excludes',
+                            customExcludeCount>0?' ('+customExcludeCount+')':''
+                        ),
+                        React.createElement('button',{className:'top-btn','aria-label':'Open local folder',onClick:function(){openLocalFolder();},disabled:loading,type:'button'},
+                            React.createElement(Icon,{name:'folder',size:'m'}),
+                            'Folder'
+                        ),
+                        data&&React.createElement('button',{className:'refresh-btn','aria-label':'Refresh analysis',onClick:refreshAnalysis,disabled:loading,title:'Refresh Analysis',type:'button'},
+                            React.createElement(Icon,{name:'refresh',size:'m'}),
+                            'Refresh'
+                        ),
+                        data&&React.createElement('button',{className:'reset-btn','aria-label':'Reset analysis',onClick:resetAnalysis,title:'Clear & Reset',type:'button'},
+                            React.createElement(Icon,{name:'close',size:'m'}),
+                            'Reset'
+                        )
+                    )
+                )
+            ),
             React.createElement('div',{className:'logo',onClick:function(){setShowPrivacy(true);}},
                 React.createElement('div',{className:'logo-mark'},React.createElement(Icon,{name:'logo',size:'l'})),
                 React.createElement('span',{className:'logo-text'},'CODEFLOW')
@@ -5321,7 +5433,7 @@ function App(){
         ),
         React.createElement('div',{className:'main'},
             isMobile&&React.createElement('button',{type:'button',className:'mobile-panel-backdrop'+(mobilePanel?' visible':''),'aria-label':'Close mobile panel',onClick:function(){setMobilePanel(null);}}),
-            React.createElement('div',{className:'sidebar'+(isMobile&&mobilePanel==='explorer'?' mobile-visible':''),style:{width:isMobile?mobileSidebarWidth:sidebarWidth}},
+            React.createElement('div',{className:'sidebar'+(isMobile&&mobilePanel==='explorer'?' mobile-visible':''),style:{width:isMobile?'100vw':sidebarWidth}},
                 isMobile&&React.createElement('div',{className:'mobile-panel-header'},
                     React.createElement('div',{className:'mobile-panel-meta'},
                         React.createElement('div',{className:'mobile-panel-title'},'Explorer'),
@@ -5489,7 +5601,7 @@ function App(){
                     tooltip&&React.createElement('div',{className:'tooltip',style:{left:tooltip.x,top:tooltip.y}},React.createElement('div',{className:'tooltip-title'},tooltip.title),React.createElement('div',{className:'tooltip-content'},tooltip.content))
                 )
             ),
-            React.createElement('div',{className:'right-panel'+(isMobile&&mobilePanel==='details'?' mobile-visible':''),style:{width:isMobile?mobileRightPanelWidth:rightPanelWidth}},
+            React.createElement('div',{className:'right-panel'+(isMobile&&mobilePanel==='details'?' mobile-visible':''),style:{width:isMobile?'100vw':rightPanelWidth}},
                 isMobile&&React.createElement('div',{className:'mobile-panel-header'},
                     React.createElement('div',{className:'mobile-panel-meta'},
                         React.createElement('div',{className:'mobile-panel-title'},selected?selected.name:'Insights'),
@@ -5937,6 +6049,20 @@ function App(){
                         );
                     })()
                 )
+            )
+        ),
+        isMobile&&React.createElement('div',{className:'mobile-bottom-nav'},
+            React.createElement('button',{className:'top-btn'+(mobilePanel==='explorer'?' active':''),'aria-label':'Open explorer panel',onClick:function(){toggleMobilePanel('explorer');},type:'button'},
+                React.createElement(Icon,{name:'folder',size:'m'}),
+                'Explorer'
+            ),
+            React.createElement('button',{className:'top-btn'+(!mobilePanel?' active':''),'aria-label':'Show canvas',onClick:function(){setMobilePanel(null);},type:'button'},
+                React.createElement(Icon,{name:'graph',size:'m'}),
+                'Canvas'
+            ),
+            React.createElement('button',{className:'top-btn'+(mobilePanel==='details'?' active':''),'aria-label':'Open insights panel',onClick:function(){toggleMobilePanel('details');},disabled:!data,type:'button'},
+                React.createElement(Icon,{name:selected?'file':'layout',size:'m'}),
+                selected?'Inspector':'Insights'
             )
         ),
         drillDown&&React.createElement('div',{className:'modal-overlay',onClick:function(){setDrillDown(null);}},
