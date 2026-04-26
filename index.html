@@ -707,12 +707,18 @@ function getArchiveRootPrefix(paths){
     return hasSingleRoot?firstSegment+'/':'';
 }
 
-function shouldSkipArchivePath(path,compiledPatterns){
+function shouldSkipArchivePath(path,compiledPatterns,dirCache){
     var segments=normalizeExcludePath(path).split('/').filter(Boolean);
     var current='';
     for(var i=0;i<segments.length-1;i++){
         current=current?current+'/'+segments[i]:segments[i];
-        if(shouldIgnoreDirectory(current,segments[i],compiledPatterns))return true;
+        if(dirCache&&dirCache.has(current)){
+            if(dirCache.get(current))return true;
+            continue;
+        }
+        var ignored=shouldIgnoreDirectory(current,segments[i],compiledPatterns);
+        if(dirCache)dirCache.set(current,ignored);
+        if(ignored)return true;
     }
     return false;
 }
@@ -4491,13 +4497,14 @@ function App(){
             var rootPrefix=getArchiveRootPrefix(rawPaths);
             var files=[];
             var fileCount=0;
+            var dirCache=new Map();
 
             fileObjs.forEach(function(fileObj){
                 var rawPath=normalizeExcludePath(fileObj.webkitRelativePath||fileObj.name);
                 if(!rawPath||rawPath.endsWith('/'))return;
                 var entryPath=rootPrefix&&rawPath.indexOf(rootPrefix)===0?rawPath.slice(rootPrefix.length):rawPath;
                 entryPath=normalizeExcludePath(entryPath);
-                if(!entryPath||shouldSkipArchivePath(entryPath,patterns))return;
+                if(!entryPath||shouldSkipArchivePath(entryPath,patterns,dirCache))return;
                 var parts=entryPath.split('/').filter(Boolean);
                 var name=parts[parts.length-1]||'';
                 if(!name||name==='.DS_Store'||shouldExcludeFile(entryPath,name,patterns))return;
@@ -4586,13 +4593,14 @@ function App(){
             var files=[];
             var entriesByPath=Object.create(null);
             var fileCount=0;
+            var dirCache=new Map();
 
             rawEntries.forEach(function(entry){
                 var rawPath=normalizeExcludePath(entry.name);
                 if(!rawPath||rawPath.endsWith('/'))return;
                 var entryPath=rootPrefix&&rawPath.indexOf(rootPrefix)===0?rawPath.slice(rootPrefix.length):rawPath;
                 entryPath=normalizeExcludePath(entryPath);
-                if(!entryPath||shouldSkipArchivePath(entryPath,patterns))return;
+                if(!entryPath||shouldSkipArchivePath(entryPath,patterns,dirCache))return;
                 var parts=entryPath.split('/').filter(Boolean);
                 var name=parts[parts.length-1]||'';
                 if(!name||name==='.DS_Store'||shouldExcludeFile(entryPath,name,patterns))return;
