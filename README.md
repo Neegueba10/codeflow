@@ -17,16 +17,15 @@
 
 ---
 
-## :sparkles: New: CodeFlow Card — auto-updating repo stats SVG
+## CodeFlow Card
 
-A one-line GitHub Action that drops a self-updating card on your README, recomputed on every merge by the same analyzer as the web app. Five styles, accent presets, opt-in PR receipts, and a privacy mode for public repos.
+A GitHub Action that drops an auto-updating SVG card on your README, recomputed on every merge by the same analyzer as the web app. Five styles, accent presets, opt-in PR receipts, and a privacy mode for public repos. The card adapts to the viewer's light/dark theme automatically.
 
 <p align="center">
-  <img src="./card/examples/compact.svg" alt="compact style" width="100%" />
-  <img src="./card/examples/hero.svg" alt="hero style" width="100%" />
+  <img src="./card/examples/compact.svg" alt="CodeFlow card — compact style" width="100%" />
 </p>
 
-[**See all 10 style variants and full setup** ↓](#card-style-gallery)
+See [card/](./card/) for setup, or jump to the [style gallery](#card-style-gallery) below.
 
 ---
 
@@ -85,7 +84,7 @@ Color files by commit frequency to see which parts of your codebase are most act
 Paste a PR URL to see exactly which files it affects and calculate the blast radius of proposed changes.
 
 ### CodeFlow Card (GitHub Action)
-Auto-updating SVG card on your README — health grade, scale, fragility, hidden costs — recomputed every merge. Optional thermal-receipt PR comments. See [card/](./card/).
+Health grade, scale, fragility, and hidden costs as a self-updating SVG on your README — recomputed every merge, with optional thermal-receipt PR comments. See [card/](./card/).
 
 ### Markdown & Wiki-Link Graph
 Point CodeFlow at an Obsidian vault or any markdown directory to see notes as a connected graph. Both `[[wiki-links]]` and `[text](./relative.md)` links become edges; each note is a `note`-layer node (distinct color) with a `dependencies[]` array in the JSON export.

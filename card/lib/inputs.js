@@ -39,7 +39,7 @@ function asList(value, fallback) {
 function loadInputs() {
   const output = readInput('output', '.github/codeflow-card.svg');
   const state = readInput('state', '.github/codeflow-card.json');
-  const theme = readInput('theme', 'dark');
+  const theme = readInput('theme', 'auto');
   const accent = readInput('accent', '');
   const style = readInput('style', 'compact');
   // panels only used when style=detailed. Empty means "show everything for the style".

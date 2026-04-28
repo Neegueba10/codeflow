@@ -27,7 +27,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: braedonsaunders/codeflow/card@v1
         with:
-          theme: dark
           receipts: false  # set true to post merged-PR comments
 ```
 
@@ -45,7 +44,7 @@ The Action commits the rendered SVG to `.github/codeflow-card.svg` (overwriting 
 |---|---|---|
 | `output` | `.github/codeflow-card.svg` | Path to write the card SVG. |
 | `state` | `.github/codeflow-card.json` | Path to the JSON history file (sparklines, deltas). |
-| `theme` | `dark` | `dark` \| `light` \| `auto`. `auto` emits a single SVG that adapts to the viewer's system theme via `prefers-color-scheme`. |
+| `theme` | `auto` | `dark` \| `light` \| `auto`. `auto` emits a single SVG that adapts to the viewer's system theme via `prefers-color-scheme`, so one card looks native on both light and dark READMEs. |
 | `accent` | _(none)_ | Preset (`purple` / `teal` / `cyan` / `green` / `pink` / `blue` / `amber` / `red`) or any CSS color (e.g. `#ff6b6b`). |
 | `style` | `compact` | `compact` \| `row` \| `minimal` \| `hero` \| `detailed`. |
 | `panels` | _(per-style default)_ | `detailed`-only. Comma-separated: `grade`, `scale`, `languages`, `composition`, `top-folders`, `fragility`, `hidden-costs`. |

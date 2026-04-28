@@ -14,9 +14,9 @@ inputs:
     required: false
     default: '.github/codeflow-card.json'
   theme:
-    description: 'Card theme: dark | light | auto. `auto` produces a single SVG that adapts to the viewer''s system theme via `prefers-color-scheme` — one card looks native on light and dark READMEs.'
+    description: 'Card theme: dark | light | auto. `auto` (default) produces a single SVG that adapts to the viewer''s system theme via `prefers-color-scheme` — one card looks native on light and dark READMEs.'
     required: false
-    default: 'dark'
+    default: 'auto'
   accent:
     description: 'Accent color. Either a preset (purple|teal|cyan|green|pink|blue|amber|red) or any CSS color (e.g. #ff6b6b).'
     required: false
