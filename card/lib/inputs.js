@@ -4,8 +4,15 @@
 'use strict';
 
 function readInput(name, defaultValue) {
-  const envKey = 'INPUT_' + name.toUpperCase().replace(/-/g, '_');
-  const v = process.env[envKey];
+  // GitHub's node24 runtime preserves dashes in env var names
+  // (`INPUT_SHOW-GRADE`), but composite actions and some docs imply
+  // underscore conversion (`INPUT_SHOW_GRADE`). Check both so the action
+  // works regardless of which form the runtime uses.
+  const upper = name.toUpperCase();
+  const dashKey = 'INPUT_' + upper;
+  const underscoreKey = 'INPUT_' + upper.replace(/-/g, '_');
+  let v = process.env[dashKey];
+  if (v === undefined || v === '') v = process.env[underscoreKey];
   if (v === undefined || v === '') return defaultValue;
   return v;
 }

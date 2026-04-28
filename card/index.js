@@ -45,8 +45,6 @@ async function run() {
   const inputs = loadInputs();
   const repoRoot = process.env.GITHUB_WORKSPACE || process.cwd();
   log('analyzing ' + repoRoot);
-  log('DBG3 ALL_INPUTS=' + JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith('INPUT_')))));
-  log('DBG3 inputs.showGrade=' + JSON.stringify(inputs.showGrade) + ' typeof=' + typeof inputs.showGrade);
 
   const actionDir = __dirname;
   const indexHtmlPath = locateIndexHtml(actionDir, repoRoot);
