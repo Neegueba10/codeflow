@@ -45,13 +45,19 @@ The Action commits the rendered SVG to `.github/codeflow-card.svg` (overwriting 
 |---|---|---|
 | `output` | `.github/codeflow-card.svg` | Path to write the card SVG. |
 | `state` | `.github/codeflow-card.json` | Path to the JSON history file (sparklines, deltas). |
-| `theme` | `dark` | `dark` \| `light`. |
-| `panels` | `grade,scale,fragility,hidden-costs` | Comma-separated list. Drop any to exclude. |
-| `receipts` | `false` | Post a thermal-receipt-style sticky comment on each merged PR. |
+| `theme` | `dark` | `dark` \| `light` \| `auto`. `auto` emits a single SVG that adapts to the viewer's system theme via `prefers-color-scheme`. |
+| `accent` | _(none)_ | Preset (`purple` / `teal` / `cyan` / `green` / `pink` / `blue` / `amber` / `red`) or any CSS color (e.g. `#ff6b6b`). |
+| `style` | `compact` | `compact` \| `row` \| `minimal` \| `hero` \| `detailed`. |
+| `panels` | _(per-style default)_ | `detailed`-only. Comma-separated: `grade`, `scale`, `languages`, `composition`, `top-folders`, `fragility`, `hidden-costs`. |
+| `show-grade` | `'true'` | Hide the letter grade everywhere on the card. Public READMEs often want `'false'`. **Quote it** — see note below. |
+| `show-score` | `'true'` | Hide the `/100` score (keeps the letter unless `show-grade` is also off). **Quote it** — see note below. |
+| `receipts` | `'false'` | Post a thermal-receipt-style sticky comment on each merged PR. |
+| `pin` | `'true'` | Show the "Powered by codeflow" footer. |
 | `sparkline-window` | `30` | Recent runs to keep in state for sparklines. |
-| `pin` | `true` | Show the "Powered by codeflow" footer. |
 | `commit-message` | `chore: update codeflow card [skip ci]` | Commit message used by the Action. |
 | `github-token` | `${{ github.token }}` | Token for committing and posting receipts. |
+
+> **Quote your booleans.** GitHub Actions silently drops bare YAML booleans (`show-grade: false`) for inputs whose action.yml default is a string, so the value never reaches the action and you get the default. Always quote: `show-grade: 'false'`. Same goes for `show-score`, `receipts`, `pin`.
 
 ## What's on the card
 
