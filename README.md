@@ -17,18 +17,6 @@
 
 ---
 
-## CodeFlow Card
-
-A GitHub Action that drops an auto-updating SVG card on your README, recomputed on every merge by the same analyzer as the web app. Five styles, accent presets, opt-in PR receipts, and a privacy mode for public repos. The card adapts to the viewer's light/dark theme automatically.
-
-<p align="center">
-  <img src="./card/examples/compact.svg" alt="CodeFlow card — compact style" width="100%" />
-</p>
-
-See [card/](./card/) for setup, or jump to the [style gallery](#card-style-gallery) below.
-
----
-
 ## Why CodeFlow?
 
 Ever opened a new codebase and felt completely lost? **CodeFlow** turns any GitHub repository or local codebase into an interactive architecture map in seconds.
@@ -97,6 +85,18 @@ Analyze code directly from your computer without uploading to GitHub:
 - **Folder Scanning:** Recursively analyze entire project structures
 - **Exclude Patterns:** Skip attachments, caches, generated assets, and other irrelevant paths before scanning
 - **Instant Results:** All processing happens in your browser
+
+---
+
+## CodeFlow Card
+
+A GitHub Action that drops an auto-updating SVG card on your README, recomputed on every merge by the same analyzer as the web app. Five styles, accent presets, opt-in PR receipts, and a privacy mode for public repos. The card adapts to the viewer's light/dark theme automatically.
+
+<p align="center">
+  <img src="./card/examples/compact.svg" alt="CodeFlow card — compact style" width="100%" />
+</p>
+
+See [card/](./card/) for setup, or jump to the [style gallery](#card-style-gallery) below.
 
 ---
 
